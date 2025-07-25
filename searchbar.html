@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College Student Directory</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Zeyada&display=swap');
+        body {
+            font-family:Arial, Helvetica, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .header {
+            font-family: 'Apple Chancery', 'Zeyada', cursive;
+            font-size: 30px;
+            background: linear-gradient(135deg, #2c3e50 0%, #1a2533 100%);
+            color: white;
+            width: 100%;
+            padding: 30px 0;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            position: relative;
+            z-index: 10;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #f1c40f, #e74c3c, #3498db);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.2em;
+            font-weight: 300;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        
+
+        
+        .search-container {
+            margin: 40px 0;
+            width: 80%;
+            max-width: 600px;
+            position: relative;
+            z-index: 10;
+            animation: fadeIn 0.8s ease-out;
+        }
+        
+        #search-bar {
+            width: 100%;
+            padding: 18px 25px;
+            font-size: 18px;
+            border: none;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            outline: none;
+            transition: all 0.3s ease;
+            background-color: rgba(255,255,255,0.9);
+            position: relative;
+        }
+        
+        #search-bar:focus {
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+            animation: purple-glow 1.5s infinite alternate;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }
+        
+        @keyframes purple-glow {
+            0% {
+                box-shadow: 0 0 0 2px rgba(138,43,226,0.3),
+                            0 6px 20px rgba(0,0,0,0.15);
+            }
+            100% {
+                box-shadow: 0 0 0 4px rgba(138,43,226,0.6),
+                            0 6px 20px rgba(0,0,0,0.15);
+            }
+        }
+        
+        #search-bar::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: 50px;
+            background: linear-gradient(45deg, #8a2be2, #da70d6, #8a2be2);
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        #search-bar:focus::before {
+            opacity: 1;
+            animation: gradient-rotate 3s linear infinite;
+        }
+        
+        @keyframes gradient-rotate {
+            0% {
+                background-position: 0% 50%;
+            }
+            100% {
+                background-position: 100% 50%;
+            }
+        }
+        
+        
+        .floating-caps {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.15;
+        }
+        
+        .cap {
+            position: absolute;
+            font-size: 24px;
+            opacity: 0;
+            animation: float 15s linear infinite;
+        }
+        
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.6;
+            }
+            90% {
+                opacity: 0.6;
+            }
+            100% {
+                transform: translateY(-100px) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        .results-container {
+            width: 80%;
+            max-width: 800px;
+            margin: 20px 0 50px;
+            display: none;
+            position: relative;
+            z-index: 10;
+            animation: fadeInUp 0.5s ease-out;
+        }
+        
+        .student-card {
+            background-color: rgba(255,255,255,0.95);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+        
+        .student-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+        
+        .student-card h3 {
+            color: #2c3e50;
+            margin-top: 0;
+            border-bottom: 2px solid #f1c40f;
+            padding-bottom: 12px;
+            font-size: 1.5em;
+        }
+        
+        .student-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .info-item {
+            margin: 8px 0;
+        }
+        
+        .info-item strong {
+            color: #7f8c8d;
+            display: block;
+            font-size: 0.9em;
+            margin-bottom: 3px;
+        }
+        
+        .info-item span {
+            color: #34495e;
+            font-weight: 500;
+        }
+        
+        .no-results {
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 1.2em;
+            margin-top: 50px;
+            padding: 30px;
+            background-color: rgba(255,255,255,0.9);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>College Student Directory</h1>
+    </div>
+    
+    <div class="search-container">
+        <input type="text" id="search-bar" placeholder="Search for a student by name...">
+    </div>
+    
+    <div class="floating-caps" id="floating-caps">
+        <!-- Graduation caps will be added here by JavaScript -->
+    </div>
+    
+    <div class="results-container" id="results-container">
+        <!-- Search results will be displayed here -->
+    </div>
+    
+    <script>
+        // Your Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAR5IRdqwmO1URZV3hIKRSo1KnCPvRQcvU",
+            authDomain: "trial-bc1ca.firebaseapp.com",
+            projectId: "trial-bc1ca",
+            storageBucket: "trial-bc1ca.firebasestorage.app",
+            messagingSenderId: "614648237384",
+            appId: "1:614648237384:web:247728911a5c8406f3f77d"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        // Create floating graduation caps
+        const floatingCaps = document.getElementById('floating-caps');
+        
+        function createFloatingCaps() {
+            const capCount = 12;
+            
+            for (let i = 0; i < capCount; i++) {
+                const cap = document.createElement('div');
+                cap.className = 'cap';
+                cap.innerHTML = '🎓';
+                
+                // Random position and animation duration
+                const leftPos = Math.random() * 100;
+                const animationDuration = 10 + Math.random() * 20;
+                const delay = Math.random() * 15;
+                const size = 20 + Math.random() * 30;
+                const rotation = Math.random() * 360;
+                
+                cap.style.left = `${leftPos}%`;
+                cap.style.animationDuration = `${animationDuration}s`;
+                cap.style.animationDelay = `${delay}s`;
+                cap.style.fontSize = `${size}px`;
+                cap.style.transform = `rotate(${rotation}deg)`;
+                
+                floatingCaps.appendChild(cap);
+            }
+        }
+        
+        createFloatingCaps();
+        
+        // Search functionality
+        const searchBar = document.getElementById('search-bar');
+        const resultsContainer = document.getElementById('results-container');
+        
+        let searchTimeout;
+        
+        searchBar.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            const searchTerm = e.target.value.trim();
+            
+            if (searchTerm === '') {
+                resultsContainer.style.display = 'none';
+                return;
+            }
+            
+            searchTimeout = setTimeout(() => {
+                searchStudents(searchTerm);
+            }, 500);
+        });
+        
+        function searchStudents(searchTerm) {
+            resultsContainer.innerHTML = '<div class="no-results">Searching...</div>';
+            resultsContainer.style.display = 'block';
+            
+            db.collection('people')
+                .where('name', '>=', searchTerm)
+                .where('name', '<=', searchTerm + '\uf8ff')
+                .get()
+                .then((querySnapshot) => {
+                    if (querySnapshot.empty) {
+                        resultsContainer.innerHTML = '<div class="no-results">No students found matching your search.</div>';
+                        return;
+                    }
+                    
+                    resultsContainer.innerHTML = '';
+                    
+                    querySnapshot.forEach((doc) => {
+                        const student = doc.data();
+                        const studentCard = document.createElement('div');
+                        studentCard.className = 'student-card';
+                        studentCard.innerHTML = `
+                            <h3>${student.name}</h3>
+                            <div class="student-info">
+                                <div class="info-item">
+                                    <strong>Age</strong>
+                                    <span>${student.age}</span>
+                                </div>
+                                <div class="info-item">
+                                    <strong>Semester</strong>
+                                    <span>${student.semester}</span>
+                                </div>
+                                <div class="info-item">
+                                    <strong>City</strong>
+                                    <span>${student.city}</span>
+                                </div>
+                                <div class="info-item">
+                                    <strong>Email</strong>
+                                    <span>${student.email}</span>
+                                </div>
+                            </div>
+                        `;
+                        resultsContainer.appendChild(studentCard);
+                    });
+                })
+                .catch((error) => {
+                    console.error("Error searching students: ", error);
+                    resultsContainer.innerHTML = '<div class="no-results">Error loading student data. Please try again.</div>';
+                });
+        }
+    </script>
+</body>
+</html>
